@@ -6,6 +6,7 @@
 #include <string>
 #include <cassert>
 #include <strsafe.h>
+#include "resource.h"
 
 enum ALIGN
 {
@@ -21,11 +22,11 @@ enum VALIGN
 };
 
 static HINSTANCE s_hinstDLL;
-static INT s_nMargin;
+static std::string s_strCaption;
+static double s_eScale;
 static INT s_nAlign;
 static INT s_nVAlign;
-static double s_eScale;
-static std::string s_strCaption;
+static INT s_nMargin;
 
 LPSTR ansi_from_wide(LPCWSTR pszWide)
 {
@@ -197,6 +198,8 @@ Plugin_Load(PLUGIN *pi, LPARAM lParam)
     StringCbCopy(pi->plugin_copyright, sizeof(pi->plugin_copyright), TEXT("Copyright (C) 2019 Katayama Hirofumi MZ"));
     pi->plugin_instance = s_hinstDLL;
     pi->plugin_window = NULL;
+    pi->p_user_data = NULL;
+    pi->l_user_data = 0;
     pi->dwFlags = PLUGIN_FLAG_PICREADER | PLUGIN_FLAG_PICWRITER;
     pi->bEnabled = TRUE;
     return TRUE;
@@ -294,6 +297,11 @@ static LRESULT Plugin_PicWrite(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
+static LRESULT Plugin_DoSettings(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
+{
+    return 0;
+}
+
 // API Name: Plugin_Act
 // Purpose: Act something on the plugin.
 // TODO: Act something on the plugin.
@@ -315,7 +323,7 @@ Plugin_Act(PLUGIN *pi, UINT uAction, WPARAM wParam, LPARAM lParam)
     case PLUGIN_ACTION_PICWRITE:
         return Plugin_PicWrite(pi, wParam, lParam);
     case PLUGIN_ACTION_SETTINGS:
-        break;
+        return Plugin_DoSettings(pi, wParam, lParam);
     }
     return 0;
 }
