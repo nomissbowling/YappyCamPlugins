@@ -25,9 +25,9 @@ static INT s_nMargin;
 static INT s_nAlign;
 static INT s_nVAlign;
 static double s_eScale;
-static std::string s_strText;
+static std::string s_strCaption;
 
-std::string DoGetText(const char *fmt, const SYSTEMTIME& st)
+std::string DoGetCaption(const char *fmt, const SYSTEMTIME& st)
 {
     std::string ret;
 
@@ -92,14 +92,61 @@ static LRESULT Plugin_Init(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
     s_nAlign = ALIGN_RIGHT;
     s_nVAlign = VALIGN_TOP;
     s_eScale = 0.2;
-    s_strText = "&h:&m:&s.&f";
+    s_strCaption = "&h:&m:&s.&f";
 
-    return 0;
+    MRegKey hkeyCompany(HKEY_CURRENT_USER,
+                        TEXT("Software\\Katayama Hirofumi MZ"),
+                        FALSE);
+    if (!hkeyCompany)
+        return FALSE;
+
+    MRegKey hkeyApp(keyCompany, TEXT("Clock_yap"), FALSE);
+    if (!hkeyApp)
+        return FALSE;
+
+    hkeyApp.QueryDword(TEXT("Margin"), (DWORD&)s_nMargin);
+    hkeyApp.QueryDword(TEXT("Align"), (DWORD&)s_nAlign);
+    hkeyApp.QueryDword(TEXT("VAlign"), (DWORD&)s_nVAlign);
+
+    DWORD dwValue;
+    TCHAR szText[64];
+
+    if (!hkeyApp.QueryDword(TEXT("Scale"), (DWORD&)dwValue))
+    {
+        s_eScale = dwValue / 1000.0;
+    }
+
+    if (!hkeyApp.QuerySz(TEXT("Caption"), szText, ARRAYSIZE(szText)))
+    {
+        s_strCaption = szText;
+    }
+
+    return TRUE;
 }
 
 static LRESULT Plugin_Uninit(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
 {
-    return 0;
+    MRegKey hkeyCompany(HKEY_CURRENT_USER,
+                        TEXT("Software\\Katayama Hirofumi MZ"),
+                        TRUE);
+    if (!hkeyCompany)
+        return FALSE;
+
+    MRegKey hkeyApp(keyCompany, TEXT("Clock_yap"), TRUE);
+    if (!hkeyApp)
+        return FALSE;
+
+    hkeyApp.SetDword(TEXT("Margin"), s_nMargin);
+    hkeyApp.SetDword(TEXT("Align"), s_nAlign);
+    hkeyApp.SetDword(TEXT("VAlign"), s_nVAlign);
+
+    DWORD dwValue = DWORD(s_eScale * 1000);
+    hkeyApp.SetDword(TEXT("Scale"), (DWORD&)dwValue);
+
+    TCHAR szText[64];
+    hkeyApp.SetSz(TEXT("Caption"), s_strCaption.c_str());
+
+    return TRUE;
 }
 
 // API Name: Plugin_Load
@@ -222,7 +269,7 @@ static LRESULT Plugin_PicWrite(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
     SYSTEMTIME st;
     GetLocalTime(&st);
 
-    std::string strText = DoGetText(s_strText.c_str(), st);
+    std::string strText = DoGetCaption(s_strCaption.c_str(), st);
     puts(strText.c_str());
 
     cv::Scalar black(0, 0, 0);
