@@ -27,6 +27,20 @@ static INT s_nVAlign;
 static double s_eScale;
 static std::string s_strCaption;
 
+LPSTR ansi_from_wide(LPCWSTR pszWide)
+{
+    static char s_buf[256];
+    WideCharToMultiByte(CP_ACP, 0, pszWide, -1, s_buf, ARRAYSIZE(s_buf), NULL, NULL);
+    return s_buf;
+}
+
+LPWSTR wide_from_ansi(LPCSTR pszAnsi)
+{
+    static WCHAR s_buf[256];
+    MultiByteToWideChar(CP_ACP, 0, pszAnsi, -1, s_buf, ARRAYSIZE(s_buf));
+    return s_buf;
+}
+
 std::string DoGetCaption(const char *fmt, const SYSTEMTIME& st)
 {
     std::string ret;
@@ -100,7 +114,7 @@ static LRESULT Plugin_Init(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
     if (!hkeyCompany)
         return FALSE;
 
-    MRegKey hkeyApp(keyCompany, TEXT("Clock_yap"), FALSE);
+    MRegKey hkeyApp(hkeyCompany, TEXT("Clock_yap"), FALSE);
     if (!hkeyApp)
         return FALSE;
 
@@ -118,7 +132,7 @@ static LRESULT Plugin_Init(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
 
     if (!hkeyApp.QuerySz(TEXT("Caption"), szText, ARRAYSIZE(szText)))
     {
-        s_strCaption = szText;
+        s_strCaption = ansi_from_wide(szText);
     }
 
     return TRUE;
@@ -132,7 +146,7 @@ static LRESULT Plugin_Uninit(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
     if (!hkeyCompany)
         return FALSE;
 
-    MRegKey hkeyApp(keyCompany, TEXT("Clock_yap"), TRUE);
+    MRegKey hkeyApp(hkeyCompany, TEXT("Clock_yap"), TRUE);
     if (!hkeyApp)
         return FALSE;
 
@@ -144,7 +158,7 @@ static LRESULT Plugin_Uninit(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
     hkeyApp.SetDword(TEXT("Scale"), (DWORD&)dwValue);
 
     TCHAR szText[64];
-    hkeyApp.SetSz(TEXT("Caption"), s_strCaption.c_str());
+    hkeyApp.SetSz(TEXT("Caption"), wide_from_ansi(s_strCaption.c_str()));
 
     return TRUE;
 }
