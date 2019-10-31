@@ -142,7 +142,7 @@ Plugin_Load(PLUGIN *pi, LPARAM lParam)
     pi->p_user_data = NULL;
     pi->l_user_data = 0;
     pi->dwFlags = PLUGIN_FLAG_PICWRITER;
-    pi->bEnabled = TRUE;
+    pi->bEnabled = FALSE;
     DoLoadSettings(pi, 0, 0);
 
     s_pi = pi;
