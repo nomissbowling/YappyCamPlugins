@@ -333,10 +333,11 @@ static BOOL OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
     HWND hCmb1 = GetDlgItem(hwnd, cmb1);
     ComboBox_AddString(hCmb1, TEXT("&h:&m"));
     ComboBox_AddString(hCmb1, TEXT("&h:&m:&s"));
-    ComboBox_AddString(hCmb1, TEXT("&h:&m:&s.%f"));
+    ComboBox_AddString(hCmb1, TEXT("&h:&m:&s.&f"));
     ComboBox_AddString(hCmb1, TEXT("&y.&M.&d &h:&m:&s"));
-    ComboBox_AddString(hCmb1, TEXT("&y.&M.&d &h:&m:&s.%f"));
+    ComboBox_AddString(hCmb1, TEXT("&y.&M.&d &h:&m:&s.&f"));
     ComboBox_AddString(hCmb1, TEXT("&y.&M.&d"));
+    ComboBox_AddString(hCmb1, TEXT("Sample Text"));
     SetDlgItemTextA(hwnd, cmb1, s_strCaption.c_str());
 
     HWND hCmb2 = GetDlgItem(hwnd, cmb2);
