@@ -185,9 +185,7 @@ static LRESULT Plugin_PicWrite(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
         break;
     case ROTATION_90:
         cv::transpose(mat, image1);
-        cv::flip(image1, image2, 0);
-        cv::flip(image2, image1, 1);
-        mat = image1;
+        cv::flip(image1, mat, 1);
         mat.cols = rows;
         mat.rows = cols;
         break;
@@ -200,7 +198,7 @@ static LRESULT Plugin_PicWrite(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
         break;
     case ROTATION_270:
         cv::transpose(mat, image1);
-        mat = image1;
+        cv::flip(image1, mat, 0);
         mat.cols = rows;
         mat.rows = cols;
         break;
