@@ -7,12 +7,13 @@
 
 #define IDD_CONFIG                          100
 
-#define IDS_LEFT                            100
-#define IDS_CENTER                          101
-#define IDS_RIGHT                           102
-#define IDS_TOP                             103
-#define IDS_MIDDLE                          104
-#define IDS_BOTTOM                          105
+#define IDS_TITLE                           100
+#define IDS_LEFT                            101
+#define IDS_CENTER                          102
+#define IDS_RIGHT                           103
+#define IDS_TOP                             104
+#define IDS_MIDDLE                          105
+#define IDS_BOTTOM                          106
 
 #ifdef APSTUDIO_INVOKED
     #ifndef APSTUDIO_READONLY_SYMBOLS

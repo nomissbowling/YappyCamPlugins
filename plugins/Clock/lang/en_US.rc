@@ -37,6 +37,7 @@ FONT 8, "Tahoma"
 
 STRINGTABLE
 {
+    IDS_TITLE, "Clock"
     IDS_LEFT, "Left"
     IDS_CENTER, "Center"
     IDS_RIGHT, "Right"

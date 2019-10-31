@@ -23,6 +23,7 @@ FONT 8, "Tahoma"
 
 STRINGTABLE
 {
+    IDS_TITLE, "Rotation"
     IDS_ROTATION_NONE, "(No rotation)"
     IDS_ROTATION_90, "Rotate 90 degrees clockwise"
     IDS_ROTATION_180, "Rotate 180 degrees"

@@ -7,12 +7,13 @@
 
 #define IDD_CONFIG                          100
 
-#define IDS_ROTATION_NONE                   100
-#define IDS_ROTATION_90                     101
-#define IDS_ROTATION_180                    102
-#define IDS_ROTATION_270                    103
-#define IDS_FLIPH                           104
-#define IDS_FLIPV                           105
+#define IDS_TITLE                           100
+#define IDS_ROTATION_NONE                   101
+#define IDS_ROTATION_90                     102
+#define IDS_ROTATION_180                    103
+#define IDS_ROTATION_270                    104
+#define IDS_FLIPH                           105
+#define IDS_FLIPV                           106
 
 #ifdef APSTUDIO_INVOKED
     #ifndef APSTUDIO_READONLY_SYMBOLS

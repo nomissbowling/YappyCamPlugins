@@ -37,6 +37,7 @@ FONT 9, "MS UI Gothic"
 
 STRINGTABLE
 {
+    IDS_TITLE, "時計"
     IDS_LEFT, "左"
     IDS_CENTER, "横中央"
     IDS_RIGHT, "右"
