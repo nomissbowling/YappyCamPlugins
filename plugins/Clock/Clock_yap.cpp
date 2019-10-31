@@ -3,6 +3,8 @@
 // This file is public domain software.
 #include "../Plugin.h"
 #include "../mregkey.hpp"
+#include <windowsx.h>
+#include <commctrl.h>
 #include <string>
 #include <cassert>
 #include <strsafe.h>
@@ -27,6 +29,21 @@ static double s_eScale;
 static INT s_nAlign;
 static INT s_nVAlign;
 static INT s_nMargin;
+static BOOL s_bDialogInit = FALSE;
+
+LPTSTR LoadStringDx(INT nID)
+{
+    static UINT s_index = 0;
+    const UINT cchBuffMax = 1024;
+    static TCHAR s_sz[2][cchBuffMax];
+
+    TCHAR *pszBuff = s_sz[s_index];
+    s_index = (s_index + 1) % ARRAYSIZE(s_sz);
+    pszBuff[0] = 0;
+    if (!::LoadString(s_hinstDLL, nID, pszBuff, cchBuffMax))
+        assert(0);
+    return pszBuff;
+}
 
 LPSTR ansi_from_wide(LPCWSTR pszWide)
 {
@@ -128,7 +145,7 @@ static LRESULT Plugin_Init(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
 
     if (!hkeyApp.QueryDword(TEXT("Scale"), (DWORD&)dwValue))
     {
-        s_eScale = dwValue / 1000.0;
+        s_eScale = dwValue / 100.0;
     }
 
     if (!hkeyApp.QuerySz(TEXT("Caption"), szText, ARRAYSIZE(szText)))
@@ -155,7 +172,7 @@ static LRESULT Plugin_Uninit(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
     hkeyApp.SetDword(TEXT("Align"), s_nAlign);
     hkeyApp.SetDword(TEXT("VAlign"), s_nVAlign);
 
-    DWORD dwValue = DWORD(s_eScale * 1000);
+    DWORD dwValue = DWORD(s_eScale * 100);
     hkeyApp.SetDword(TEXT("Scale"), (DWORD&)dwValue);
 
     TCHAR szText[64];
@@ -269,7 +286,7 @@ void DoDrawText(cv::Mat& mat, const char *text, double scale, int thickness,
                 color, thickness, cv::LINE_AA, false);
 }
 
-static LRESULT Plugin_PicRead(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
+inline LRESULT Plugin_PicRead(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
 {
     const cv::Mat *pmat = (const cv::Mat *)wParam;
     return 0;
@@ -297,8 +314,199 @@ static LRESULT Plugin_PicWrite(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
     return 0;
 }
 
+static BOOL OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
+{
+    HWND hCmb1 = GetDlgItem(hwnd, cmb1);
+    ComboBox_AddString(hCmb1, TEXT("&h:&m"));
+    ComboBox_AddString(hCmb1, TEXT("&h:&m:&s"));
+    ComboBox_AddString(hCmb1, TEXT("&h:&m:&s.%f"));
+    ComboBox_AddString(hCmb1, TEXT("&y.&M.&d &h:&m:&s"));
+    ComboBox_AddString(hCmb1, TEXT("&y.&M.&d &h:&m:&s.%f"));
+    ComboBox_AddString(hCmb1, TEXT("&y.&M.&d"));
+    SetDlgItemTextA(hwnd, cmb1, s_strCaption.c_str());
+
+    HWND hCmb2 = GetDlgItem(hwnd, cmb2);
+    ComboBox_AddString(hCmb2, LoadStringDx(IDS_LEFT));
+    ComboBox_AddString(hCmb2, LoadStringDx(IDS_CENTER));
+    ComboBox_AddString(hCmb2, LoadStringDx(IDS_RIGHT));
+    switch (s_nAlign)
+    {
+    case ALIGN_LEFT:
+        ComboBox_SetCurSel(hCmb2, 0);
+        break;
+    case ALIGN_CENTER:
+        ComboBox_SetCurSel(hCmb2, 1);
+        break;
+    case ALIGN_RIGHT:
+        ComboBox_SetCurSel(hCmb2, 2);
+        break;
+    }
+
+    HWND hCmb3 = GetDlgItem(hwnd, cmb3);
+    ComboBox_AddString(hCmb3, LoadStringDx(IDS_TOP));
+    ComboBox_AddString(hCmb3, LoadStringDx(IDS_MIDDLE));
+    ComboBox_AddString(hCmb3, LoadStringDx(IDS_BOTTOM));
+    switch (s_nVAlign)
+    {
+    case VALIGN_TOP:
+        ComboBox_SetCurSel(hCmb2, 0);
+        break;
+    case VALIGN_MIDDLE:
+        ComboBox_SetCurSel(hCmb2, 1);
+        break;
+    case VALIGN_BOTTOM:
+        ComboBox_SetCurSel(hCmb2, 2);
+        break;
+    }
+
+    DWORD dwValue = DWORD(s_eScale * 100);
+    SendDlgItemMessage(hwnd, scr1, UDM_SETRANGE, 0, MAKELONG(100, 0));
+    SendDlgItemMessage(hwnd, scr1, UDM_SETPOS, 0, MAKELONG(dwValue, 0));
+
+    SendDlgItemMessage(hwnd, scr2, UDM_SETRANGE, 0, MAKELONG(300, 0));
+    SendDlgItemMessage(hwnd, scr2, UDM_SETPOS, 0, MAKELONG(s_nMargin, 0));
+
+    s_bDialogInit = TRUE;
+    return TRUE;
+}
+
+static void OnEdt1(HWND hwnd)
+{
+    if (!s_bDialogInit)
+        return;
+
+    BOOL bTranslated = FALSE;
+    INT nValue = GetDlgItemInt(hwnd, edt1, &bTranslated, TRUE);
+    if (bTranslated)
+    {
+        s_eScale = nValue / 100.0;
+    }
+}
+
+static void OnEdt2(HWND hwnd)
+{
+    if (!s_bDialogInit)
+        return;
+
+    BOOL bTranslated = FALSE;
+    INT nValue = GetDlgItemInt(hwnd, edt2, &bTranslated, TRUE);
+    if (bTranslated)
+    {
+        s_nMargin = nValue;
+    }
+}
+
+static void OnCmb2(HWND hwnd)
+{
+    if (!s_bDialogInit)
+        return;
+
+    HWND hCmb2 = GetDlgItem(hwnd, cmb2);
+    switch (ComboBox_GetCurSel(hCmb2))
+    {
+    case 0:
+        s_nAlign = ALIGN_LEFT;
+        break;
+    case 1:
+        s_nAlign = ALIGN_CENTER;
+        break;
+    case 2:
+        s_nAlign = ALIGN_RIGHT;
+        break;
+    case CB_ERR:
+    default:
+        assert(0);
+        break;
+    }
+}
+
+static void OnCmb3(HWND hwnd)
+{
+    if (!s_bDialogInit)
+        return;
+
+    HWND hCmb3 = GetDlgItem(hwnd, cmb3);
+    switch (ComboBox_GetCurSel(hCmb3))
+    {
+    case 0:
+        s_nVAlign = VALIGN_TOP;
+        break;
+    case 1:
+        s_nVAlign = VALIGN_MIDDLE;
+        break;
+    case 2:
+        s_nVAlign = VALIGN_BOTTOM;
+        break;
+    case CB_ERR:
+    default:
+        assert(0);
+        break;
+    }
+}
+
+static void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
+{
+    switch (id)
+    {
+    case edt1:
+        if (codeNotify == EN_CHANGE)
+        {
+            OnEdt1(hwnd);
+        }
+        break;
+    case edt2:
+        if (codeNotify == EN_CHANGE)
+        {
+            OnEdt2(hwnd);
+        }
+        break;
+    case cmb1:
+        break;
+    case cmb2:
+        if (codeNotify == CBN_SELCHANGE)
+        {
+            OnCmb2(hwnd);
+        }
+        break;
+    case cmb3:
+        if (codeNotify == CBN_SELCHANGE)
+        {
+            OnCmb3(hwnd);
+        }
+        break;
+    }
+}
+
+void OnDestroy(HWND hwnd)
+{
+    s_bDialogInit = FALSE;
+}
+
+static INT_PTR CALLBACK
+DialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
+{
+    switch (uMsg)
+    {
+        HANDLE_MSG(hwnd, WM_INITDIALOG, OnInitDialog);
+        HANDLE_MSG(hwnd, WM_COMMAND, OnCommand);
+        HANDLE_MSG(hwnd, WM_DESTROY, OnDestroy);
+    }
+    return 0;
+}
+
 static LRESULT Plugin_DoSettings(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
 {
+    HWND hMainWnd = (HWND)wParam;
+    BOOL bShowOrHide = (BOOL)lParam;
+
+    if (bShowOrHide)
+    {
+        CreateDialog(s_hinstDLL, MAKEINTRESOURCE(IDD_CONFIG), hMainWnd, DialogProc);
+    }
+    else
+    {
+        PostMessage(pi->plugin_window, WM_CLOSE, 0, 0);
+    }
     return 0;
 }
 
