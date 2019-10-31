@@ -29,6 +29,8 @@ static double s_eScale;
 static INT s_nAlign;
 static INT s_nVAlign;
 static INT s_nMargin;
+static INT s_nWindowX;
+static INT s_nWindowY;
 static BOOL s_bDialogInit = FALSE;
 
 LPTSTR LoadStringDx(INT nID)
@@ -118,13 +120,15 @@ std::string DoGetCaption(const char *fmt, const SYSTEMTIME& st)
 
 extern "C" {
 
-static LRESULT Plugin_Init(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
+static LRESULT DoLoadSettings(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
 {
     s_nMargin = 3;
     s_nAlign = ALIGN_RIGHT;
     s_nVAlign = VALIGN_TOP;
     s_eScale = 0.2;
     s_strCaption = "&h:&m:&s.&f";
+    s_nWindowX = CW_USEDEFAULT;
+    s_nWindowY = CW_USEDEFAULT;
 
     MRegKey hkeyCompany(HKEY_CURRENT_USER,
                         TEXT("Software\\Katayama Hirofumi MZ"),
@@ -139,6 +143,8 @@ static LRESULT Plugin_Init(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
     hkeyApp.QueryDword(TEXT("Margin"), (DWORD&)s_nMargin);
     hkeyApp.QueryDword(TEXT("Align"), (DWORD&)s_nAlign);
     hkeyApp.QueryDword(TEXT("VAlign"), (DWORD&)s_nVAlign);
+    hkeyApp.QueryDword(TEXT("WindowX"), (DWORD&)s_nWindowX);
+    hkeyApp.QueryDword(TEXT("WindowY"), (DWORD&)s_nWindowY);
 
     DWORD dwValue;
     TCHAR szText[64];
@@ -156,7 +162,7 @@ static LRESULT Plugin_Init(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
     return TRUE;
 }
 
-static LRESULT Plugin_Uninit(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
+static LRESULT DoSaveSettings(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
 {
     MRegKey hkeyCompany(HKEY_CURRENT_USER,
                         TEXT("Software\\Katayama Hirofumi MZ"),
@@ -171,6 +177,8 @@ static LRESULT Plugin_Uninit(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
     hkeyApp.SetDword(TEXT("Margin"), s_nMargin);
     hkeyApp.SetDword(TEXT("Align"), s_nAlign);
     hkeyApp.SetDword(TEXT("VAlign"), s_nVAlign);
+    hkeyApp.SetDword(TEXT("WindowX"), s_nWindowX);
+    hkeyApp.SetDword(TEXT("WindowY"), s_nWindowY);
 
     DWORD dwValue = DWORD(s_eScale * 100);
     hkeyApp.SetDword(TEXT("Scale"), (DWORD&)dwValue);
@@ -219,6 +227,8 @@ Plugin_Load(PLUGIN *pi, LPARAM lParam)
     pi->l_user_data = 0;
     pi->dwFlags = PLUGIN_FLAG_PICREADER | PLUGIN_FLAG_PICWRITER;
     pi->bEnabled = TRUE;
+
+    DoLoadSettings(pi, 0, 0);
     return TRUE;
 }
 
@@ -228,6 +238,7 @@ Plugin_Load(PLUGIN *pi, LPARAM lParam)
 BOOL APIENTRY
 Plugin_Unload(PLUGIN *pi, LPARAM lParam)
 {
+    DoSaveSettings(pi, 0, 0);
     return TRUE;
 }
 
@@ -448,6 +459,10 @@ static void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 {
     switch (id)
     {
+    case IDOK:
+    case IDCANCEL:
+        DestroyWindow(hwnd);
+        break;
     case edt1:
         if (codeNotify == EN_CHANGE)
         {
@@ -477,9 +492,20 @@ static void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
     }
 }
 
-void OnDestroy(HWND hwnd)
+static void OnDestroy(HWND hwnd)
 {
     s_bDialogInit = FALSE;
+}
+
+static void OnMove(HWND hwnd, int x, int y)
+{
+    if (IsMinimized(hwnd) || IsMaximized(hwnd))
+        return;
+
+    RECT rc;
+    GetWindowRect(hwnd, &rc);
+    s_nWindowX = rc.left;
+    s_nWindowY = rc.top;
 }
 
 static INT_PTR CALLBACK
@@ -490,18 +516,29 @@ DialogProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam)
         HANDLE_MSG(hwnd, WM_INITDIALOG, OnInitDialog);
         HANDLE_MSG(hwnd, WM_COMMAND, OnCommand);
         HANDLE_MSG(hwnd, WM_DESTROY, OnDestroy);
+        HANDLE_MSG(hwnd, WM_MOVE, OnMove);
     }
     return 0;
 }
 
-static LRESULT Plugin_DoSettings(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
+static LRESULT Plugin_ShowDialog(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
 {
     HWND hMainWnd = (HWND)wParam;
     BOOL bShowOrHide = (BOOL)lParam;
 
     if (bShowOrHide)
     {
-        CreateDialog(s_hinstDLL, MAKEINTRESOURCE(IDD_CONFIG), hMainWnd, DialogProc);
+        if (IsWindow(pi->plugin_window))
+        {
+            HWND hPlugin = pi->plugin_window;
+            ShowWindow(hPlugin, SW_RESTORE);
+            PostMessage(hPlugin, DM_REPOSITION, 0, 0);
+            SetForegroundWindow(hPlugin);
+        }
+        else
+        {
+            CreateDialog(s_hinstDLL, MAKEINTRESOURCE(IDD_CONFIG), hMainWnd, DialogProc);
+        }
     }
     else
     {
@@ -518,10 +555,6 @@ Plugin_Act(PLUGIN *pi, UINT uAction, WPARAM wParam, LPARAM lParam)
 {
     switch (uAction)
     {
-    case PLUGIN_ACTION_INIT:
-        return Plugin_Init(pi, wParam, lParam);
-    case PLUGIN_ACTION_UNINIT:
-        return Plugin_Uninit(pi, wParam, lParam);
     case PLUGIN_ACTION_STARTREC:
     case PLUGIN_ACTION_PAUSE:
     case PLUGIN_ACTION_ENDREC:
@@ -530,8 +563,8 @@ Plugin_Act(PLUGIN *pi, UINT uAction, WPARAM wParam, LPARAM lParam)
         return Plugin_PicRead(pi, wParam, lParam);
     case PLUGIN_ACTION_PICWRITE:
         return Plugin_PicWrite(pi, wParam, lParam);
-    case PLUGIN_ACTION_SETTINGS:
-        return Plugin_DoSettings(pi, wParam, lParam);
+    case PLUGIN_ACTION_SHOWDIALOG:
+        return Plugin_ShowDialog(pi, wParam, lParam);
     }
     return 0;
 }
