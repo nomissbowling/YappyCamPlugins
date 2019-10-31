@@ -124,7 +124,7 @@ extern "C" {
 static LRESULT DoResetSettings(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
 {
     s_nMargin = 3;
-    s_nAlign = ALIGN_RIGHT;
+    s_nAlign = ALIGN_LEFT;
     s_nVAlign = VALIGN_TOP;
     s_eScale = 0.2;
     s_strCaption = "&h:&m:&s.&f";
