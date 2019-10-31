@@ -291,16 +291,15 @@ void DoDrawText(cv::Mat& mat, const char *text, double scale, int thickness,
     {
     case VALIGN_TOP:
         pt.y = 0;
-        pt.y += s_nMargin * screen_size.height / 100;
+        pt.y += s_nMargin * screen_size.height / 100 - thickness / 2;
         break;
     case VALIGN_MIDDLE:
-        pt.y = (screen_size.height - text_size.height - thickness) / 2;
+        pt.y = (screen_size.height - text_size.height) / 2;
         break;
     case VALIGN_BOTTOM:
-        pt.y = screen_size.height - text_size.height - thickness / 2;
+        pt.y = screen_size.height - text_size.height + thickness / 2;
         pt.y -= s_nMargin * screen_size.height / 100;
         pt.y -= baseline;
-        pt.y += thickness;
         break;
     default:
         assert(0);
