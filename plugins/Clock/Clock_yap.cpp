@@ -24,6 +24,7 @@ enum VALIGN
 };
 
 static HINSTANCE s_hinstDLL;
+static HWND s_hwnd;
 static std::string s_strCaption;
 static double s_eScale;
 static INT s_nAlign;
@@ -327,6 +328,8 @@ static LRESULT Plugin_PicWrite(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
 
 static BOOL OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 {
+    s_hwnd = hwnd;
+
     HWND hCmb1 = GetDlgItem(hwnd, cmb1);
     ComboBox_AddString(hCmb1, TEXT("&h:&m"));
     ComboBox_AddString(hCmb1, TEXT("&h:&m:&s"));
@@ -360,13 +363,13 @@ static BOOL OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
     switch (s_nVAlign)
     {
     case VALIGN_TOP:
-        ComboBox_SetCurSel(hCmb2, 0);
+        ComboBox_SetCurSel(hCmb3, 0);
         break;
     case VALIGN_MIDDLE:
-        ComboBox_SetCurSel(hCmb2, 1);
+        ComboBox_SetCurSel(hCmb3, 1);
         break;
     case VALIGN_BOTTOM:
-        ComboBox_SetCurSel(hCmb2, 2);
+        ComboBox_SetCurSel(hCmb3, 2);
         break;
     }
 
@@ -405,6 +408,27 @@ static void OnEdt2(HWND hwnd)
     {
         s_nMargin = nValue;
     }
+}
+
+static void OnCmb1(HWND hwnd)
+{
+    if (!s_bDialogInit)
+        return;
+
+    HWND hCmb1 = GetDlgItem(hwnd, cmb1);
+
+    TCHAR szText[MAX_PATH];
+    INT iItem = ComboBox_GetCurSel(hCmb1);
+    if (iItem == CB_ERR)
+    {
+        ComboBox_GetText(hCmb1, szText, ARRAYSIZE(szText));
+    }
+    else
+    {
+        ComboBox_GetLBText(hCmb1, iItem, szText);
+    }
+
+    s_strCaption = ansi_from_wide(szText);
 }
 
 static void OnCmb2(HWND hwnd)
@@ -476,6 +500,18 @@ static void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         }
         break;
     case cmb1:
+        switch (codeNotify)
+        {
+        case CBN_DROPDOWN:
+        case CBN_CLOSEUP:
+        case CBN_SETFOCUS:
+        case CBN_EDITUPDATE:
+        case CBN_SELENDCANCEL:
+            break;
+        default:
+            OnCmb1(hwnd);
+            break;
+        }
         break;
     case cmb2:
         if (codeNotify == CBN_SELCHANGE)
@@ -494,6 +530,7 @@ static void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 
 static void OnDestroy(HWND hwnd)
 {
+    s_hwnd = NULL;
     s_bDialogInit = FALSE;
 }
 
@@ -534,17 +571,26 @@ static LRESULT Plugin_ShowDialog(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
             ShowWindow(hPlugin, SW_RESTORE);
             PostMessage(hPlugin, DM_REPOSITION, 0, 0);
             SetForegroundWindow(hPlugin);
+            return TRUE;
         }
         else
         {
             CreateDialog(s_hinstDLL, MAKEINTRESOURCE(IDD_CONFIG), hMainWnd, DialogProc);
+            if (s_hwnd)
+            {
+                ShowWindow(s_hwnd, SW_SHOWNORMAL);
+                UpdateWindow(s_hwnd);
+                return TRUE;
+            }
         }
     }
     else
     {
         PostMessage(pi->plugin_window, WM_CLOSE, 0, 0);
+        return TRUE;
     }
-    return 0;
+
+    return FALSE;
 }
 
 // API Name: Plugin_Act
