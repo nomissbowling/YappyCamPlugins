@@ -8,7 +8,7 @@ LANGUAGE LANG_ENGLISH, SUBLANG_DEFAULT
 //////////////////////////////////////////////////////////////////////////////
 // RT_DIALOG
 
-IDD_CONFIG DIALOG 0, 0, 175, 130
+IDD_CONFIG DIALOG 0, 0, 175, 150
 CAPTION "Clock.yap settings"
 STYLE DS_CENTER | DS_MODALFRAME | WS_POPUPWINDOW | WS_CAPTION
 EXSTYLE WS_EX_TOOLWINDOW
@@ -27,6 +27,9 @@ FONT 8, "Tahoma"
     LTEXT "&Margin:", -1, 5, 112, 50, 12
     EDITTEXT edt2, 60, 110, 35, 14, ES_NUMBER | ES_AUTOHSCROLL | ES_RIGHT
     CONTROL "", scr2, "msctls_updown32", UDS_NOTHOUSANDS | UDS_ARROWKEYS | UDS_AUTOBUDDY | UDS_ALIGNRIGHT | UDS_SETBUDDYINT, 167, 68, 12, 20
+    LTEXT "&Thinkness:", -1, 5, 132, 50, 12
+    EDITTEXT edt3, 60, 130, 35, 14, ES_NUMBER | ES_AUTOHSCROLL | ES_RIGHT
+    CONTROL "", scr3, "msctls_updown32", UDS_NOTHOUSANDS | UDS_ARROWKEYS | UDS_AUTOBUDDY | UDS_ALIGNRIGHT | UDS_SETBUDDYINT, 172, 73, 12, 20
 }
 
 //////////////////////////////////////////////////////////////////////////////

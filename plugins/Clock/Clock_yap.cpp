@@ -30,6 +30,7 @@ static double s_eScale;
 static INT s_nAlign;
 static INT s_nVAlign;
 static INT s_nMargin;
+static INT s_nThickness;
 static INT s_nWindowX;
 static INT s_nWindowY;
 static BOOL s_bDialogInit = FALSE;
@@ -130,6 +131,7 @@ static LRESULT DoResetSettings(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
     s_strCaption = "&h:&m:&s.&f";
     s_nWindowX = CW_USEDEFAULT;
     s_nWindowY = CW_USEDEFAULT;
+    s_nThickness = 2;
     return 0;
 }
 
@@ -152,6 +154,7 @@ static LRESULT DoLoadSettings(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
     hkeyApp.QueryDword(TEXT("VAlign"), (DWORD&)s_nVAlign);
     hkeyApp.QueryDword(TEXT("WindowX"), (DWORD&)s_nWindowX);
     hkeyApp.QueryDword(TEXT("WindowY"), (DWORD&)s_nWindowY);
+    hkeyApp.QueryDword(TEXT("Thickness"), (DWORD&)s_nThickness);
 
     DWORD dwValue;
     TCHAR szText[64];
@@ -186,6 +189,7 @@ static LRESULT DoSaveSettings(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
     hkeyApp.SetDword(TEXT("VAlign"), s_nVAlign);
     hkeyApp.SetDword(TEXT("WindowX"), s_nWindowX);
     hkeyApp.SetDword(TEXT("WindowY"), s_nWindowY);
+    hkeyApp.SetDword(TEXT("Thickness"), s_nThickness);
 
     DWORD dwValue = DWORD(s_eScale * 100);
     hkeyApp.SetDword(TEXT("Scale"), (DWORD&)dwValue);
@@ -232,7 +236,7 @@ Plugin_Load(PLUGIN *pi, LPARAM lParam)
     pi->plugin_window = NULL;
     pi->p_user_data = NULL;
     pi->l_user_data = 0;
-    pi->dwFlags = PLUGIN_FLAG_PICREADER | PLUGIN_FLAG_PICWRITER;
+    pi->dwFlags = PLUGIN_FLAG_PICWRITER;
     pi->bEnabled = TRUE;
     DoLoadSettings(pi, 0, 0);
 
@@ -330,8 +334,8 @@ static LRESULT Plugin_PicWrite(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
     cv::Scalar black(0, 0, 0);
     cv::Scalar white(255, 255, 255);
 
-    DoDrawText(mat, strText.c_str(), s_eScale, 6, black);
-    DoDrawText(mat, strText.c_str(), s_eScale, 2, white);
+    DoDrawText(mat, strText.c_str(), s_eScale, s_nThickness * 3, black);
+    DoDrawText(mat, strText.c_str(), s_eScale, s_nThickness, white);
     return 0;
 }
 
@@ -390,6 +394,9 @@ static BOOL OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
     SendDlgItemMessage(hwnd, scr2, UDM_SETRANGE, 0, MAKELONG(300, 0));
     SendDlgItemMessage(hwnd, scr2, UDM_SETPOS, 0, MAKELONG(s_nMargin, 0));
 
+    SendDlgItemMessage(hwnd, scr3, UDM_SETRANGE, 0, MAKELONG(30, 0));
+    SendDlgItemMessage(hwnd, scr3, UDM_SETPOS, 0, MAKELONG(s_nThickness, 0));
+
     s_bDialogInit = TRUE;
     return TRUE;
 }
@@ -417,6 +424,19 @@ static void OnEdt2(HWND hwnd)
     if (bTranslated)
     {
         s_nMargin = nValue;
+    }
+}
+
+static void OnEdt3(HWND hwnd)
+{
+    if (!s_bDialogInit)
+        return;
+
+    BOOL bTranslated = FALSE;
+    INT nValue = GetDlgItemInt(hwnd, edt3, &bTranslated, TRUE);
+    if (bTranslated)
+    {
+        s_nThickness = nValue;
     }
 }
 
@@ -507,6 +527,12 @@ static void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
         if (codeNotify == EN_CHANGE)
         {
             OnEdt2(hwnd);
+        }
+        break;
+    case edt3:
+        if (codeNotify == EN_CHANGE)
+        {
+            OnEdt3(hwnd);
         }
         break;
     case cmb1:
