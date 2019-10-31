@@ -24,7 +24,7 @@ enum VALIGN
 };
 
 static HINSTANCE s_hinstDLL;
-static HWND s_hwnd;
+static PLUGIN *s_pi;
 static std::string s_strCaption;
 static double s_eScale;
 static INT s_nAlign;
@@ -121,7 +121,7 @@ std::string DoGetCaption(const char *fmt, const SYSTEMTIME& st)
 
 extern "C" {
 
-static LRESULT DoLoadSettings(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
+static LRESULT DoResetSettings(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
 {
     s_nMargin = 3;
     s_nAlign = ALIGN_RIGHT;
@@ -130,6 +130,12 @@ static LRESULT DoLoadSettings(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
     s_strCaption = "&h:&m:&s.&f";
     s_nWindowX = CW_USEDEFAULT;
     s_nWindowY = CW_USEDEFAULT;
+    return 0;
+}
+
+static LRESULT DoLoadSettings(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
+{
+    DoResetSettings(pi, wParam, lParam);
 
     MRegKey hkeyCompany(HKEY_CURRENT_USER,
                         TEXT("Software\\Katayama Hirofumi MZ"),
@@ -228,8 +234,10 @@ Plugin_Load(PLUGIN *pi, LPARAM lParam)
     pi->l_user_data = 0;
     pi->dwFlags = PLUGIN_FLAG_PICREADER | PLUGIN_FLAG_PICWRITER;
     pi->bEnabled = TRUE;
-
     DoLoadSettings(pi, 0, 0);
+
+    s_pi = pi;
+
     return TRUE;
 }
 
@@ -240,6 +248,7 @@ BOOL APIENTRY
 Plugin_Unload(PLUGIN *pi, LPARAM lParam)
 {
     DoSaveSettings(pi, 0, 0);
+    s_pi = NULL;
     return TRUE;
 }
 
@@ -328,7 +337,7 @@ static LRESULT Plugin_PicWrite(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
 
 static BOOL OnInitDialog(HWND hwnd, HWND hwndFocus, LPARAM lParam)
 {
-    s_hwnd = hwnd;
+    s_pi->plugin_window = hwnd;
 
     HWND hCmb1 = GetDlgItem(hwnd, cmb1);
     ComboBox_AddString(hCmb1, TEXT("&h:&m"));
@@ -531,7 +540,7 @@ static void OnCommand(HWND hwnd, int id, HWND hwndCtl, UINT codeNotify)
 
 static void OnDestroy(HWND hwnd)
 {
-    s_hwnd = NULL;
+    s_pi->plugin_window = NULL;
     s_bDialogInit = FALSE;
 }
 
@@ -564,6 +573,8 @@ static LRESULT Plugin_ShowDialog(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
     HWND hMainWnd = (HWND)wParam;
     BOOL bShowOrHide = (BOOL)lParam;
 
+    s_pi = pi;
+
     if (bShowOrHide)
     {
         if (IsWindow(pi->plugin_window))
@@ -577,10 +588,10 @@ static LRESULT Plugin_ShowDialog(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
         else
         {
             CreateDialog(s_hinstDLL, MAKEINTRESOURCE(IDD_CONFIG), hMainWnd, DialogProc);
-            if (s_hwnd)
+            if (pi->plugin_window)
             {
-                ShowWindow(s_hwnd, SW_SHOWNORMAL);
-                UpdateWindow(s_hwnd);
+                ShowWindow(pi->plugin_window, SW_SHOWNORMAL);
+                UpdateWindow(pi->plugin_window);
                 return TRUE;
             }
         }
@@ -592,6 +603,17 @@ static LRESULT Plugin_ShowDialog(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
     }
 
     return FALSE;
+}
+
+static LRESULT Plugin_Refresh(PLUGIN *pi, WPARAM wParam, LPARAM lParam)
+{
+    s_pi = pi;
+
+    if (BOOL bResetSettings = (BOOL)wParam)
+    {
+        DoResetSettings(pi, 0, 0);
+    }
+    return 0;
 }
 
 // API Name: Plugin_Act
@@ -612,6 +634,8 @@ Plugin_Act(PLUGIN *pi, UINT uAction, WPARAM wParam, LPARAM lParam)
         return Plugin_PicWrite(pi, wParam, lParam);
     case PLUGIN_ACTION_SHOWDIALOG:
         return Plugin_ShowDialog(pi, wParam, lParam);
+    case PLUGIN_ACTION_REFRESH:
+        return Plugin_Refresh(pi, wParam, lParam);
     }
     return 0;
 }
